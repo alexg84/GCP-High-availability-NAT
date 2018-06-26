@@ -12,3 +12,5 @@ This sulution will create:
 network = example-vpc
 subnets = example-east
 in region = us-east1 
+
+https://cloud.google.com/vpc/docs/special-configurations#multiple-natgateways
