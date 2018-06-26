@@ -7,3 +7,8 @@ You provision three n1-standard-2 NAT gateways in this example, but you can use 
 want. 
 For example, n1-standard-2 instances are capped at 4 Gbps of network traffic; if you need to handle a higher volume of traffic,
 you might choose n1-standard-8s.
+
+This sulution will create:
+network = example-vpc
+subnets = example-east
+in region = us-east1 
