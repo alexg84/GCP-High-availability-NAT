@@ -1,30 +1,34 @@
-
 #!/bin/sh
+# variables 
+REGION='us-east1'
+NETWORK='example-vpc'
+SUBNET='example-east'
+MACHINETYPE='n1-standard-2'
 
 #create a custom VPC associated with your GCP project. This VPC allows you to use non-default IP addressing, but does not include any default firewall rules:
-gcloud compute networks create example-vpc --subnet-mode custom
+gcloud compute networks create $NETWORK --subnet-mode custom
 
 #Create a subnet within this VPC, and specify a region and IP range. For this tutorial, use 10.0.1.0/24 and the us-east1 region:
-gcloud compute networks subnets create example-east \
-    --network example-vpc --range 10.0.1.0/24 --region us-east1
+gcloud compute networks subnets create $SUBNET \
+    --network $NETWORK --range 10.0.1.0/24 --region $REGION
 
 #Reserve and store three static IP addresses.
 #Reserve and store an address named nat-1 in the us-east1 region:
-gcloud compute addresses create nat-1 --region us-east1
+gcloud compute addresses create nat-1 --region $REGION
 
 nat_1_ip=$(gcloud compute addresses describe nat-1 \
-    --region us-east1 --format='value(address)')
+    --region $REGION --format='value(address)')
 
 #Reserve and store an address named nat-2 in us-east1:
-gcloud compute addresses create nat-2 --region us-east1
+gcloud compute addresses create nat-2 --region $REGION
 
 nat_2_ip=$(gcloud compute addresses describe nat-2 \
-    --region us-east1 --format='value(address)')
+    --region $REGION --format='value(address)')
 
 #Reserve and store an address named nat-3 in us-east1:
-gcloud compute addresses create nat-3 --region us-east1
+gcloud compute addresses create nat-3 --region $REGION
 nat_3_ip=$(gcloud compute addresses describe nat-3 \
-    --region us-east1 --format='value(address)')
+    --region $REGION --format='value(address)')
 
 #Create three instance templates with reserved IPs.
 #Copy the startup config:
@@ -35,17 +39,17 @@ gsutil cp gs://nat-gw-template/startup.sh .
 #Create a nat-1 instance template:
 
 gcloud compute instance-templates create nat-1 \
-    --network example-vpc --subnet example-east --region us-east1 --machine-type n1-standard-2 --can-ip-forward --tags natgw \
+    --network $NETWORK --subnet $SUBNET --region $REGION --machine-type $MACHINETYPE --can-ip-forward --tags natgw \
     --metadata-from-file=startup-script=startup.sh --address $nat_1_ip
 
 #Create a nat-2 instance template:
 gcloud compute instance-templates create nat-2 \
-    --network example-vpc --subnet example-east --region us-east1 --machine-type n1-standard-2 --can-ip-forward --tags natgw \
+    --network $NETWORK --subnet $SUBNET --region $REGION --machine-type $MACHINETYPE --can-ip-forward --tags natgw \
     --metadata-from-file=startup-script=startup.sh  --address $nat_2_ip
 
 #Create a nat-3 instance template:
 gcloud compute instance-templates create nat-3 \
-    --network example-vpc --subnet example-east --region us-east1 --machine-type n1-standard-2 --can-ip-forward --tags natgw \
+    --network $NETWORK --subnet $SUBNET --region $REGION --machine-type $MACHINETYPE --can-ip-forward --tags natgw \
     --metadata-from-file=startup-script=startup.sh --address $nat_3_ip
 
 #The n1-standard-2 machine type has two vCPUs and can use up to 4 Gbps of network bandwidth.
@@ -57,7 +61,7 @@ gcloud compute health-checks create http nat-health-check --check-interval 30 \
     --healthy-threshold 1 --unhealthy-threshold 5 --request-path /health-check
 
 gcloud compute firewall-rules create "natfirewall" \
-    --network example-vpc --allow tcp:80 --target-tags natgw \
+    --network $NETWORK --allow tcp:80 --target-tags natgw \
     --source-ranges "130.211.0.0/22","35.191.0.0/16"
 #If a system fails and can't respond to HTTP traffic, it is restarted.
 #In this case, since you need a project, you can use an existing project or create a new one.
@@ -83,13 +87,13 @@ gcloud beta compute instance-groups managed set-autohealing nat-3 \
 nat_3_instance=$(gcloud compute instances list |awk '$1 ~ /^nat-3/ { print $1 }')
 
 #Add default routes to your instances:
-gcloud compute routes create natroute1 --network example-vpc --destination-range 0.0.0.0/0 \
+gcloud compute routes create natroute1 --network $NETWORK --destination-range 0.0.0.0/0 \
     --tags no-ip --priority 800 --next-hop-instance-zone us-east1-b \
     --next-hop-instance $nat_1_instance
-gcloud compute routes create natroute2 --network example-vpc --destination-range 0.0.0.0/0 \
+gcloud compute routes create natroute2 --network $NETWORK --destination-range 0.0.0.0/0 \
     --tags no-ip --priority 800 --next-hop-instance-zone us-east1-c \
     --next-hop-instance $nat_2_instance
-gcloud compute routes create natroute3 --network example-vpc --destination-range 0.0.0.0/0 \
+gcloud compute routes create natroute3 --network $NETWORK --destination-range 0.0.0.0/0 \
     --tags no-ip --priority 800 --next-hop-instance-zone us-east1-d \
     --next-hop-instance $nat_3_instance
 
